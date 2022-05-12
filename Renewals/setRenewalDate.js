@@ -20,12 +20,18 @@ exports.main = async (event, callback) => {
   
   const newDate = (data) => {
     let newDateObject = {}
-    if (data.day >=16){
+    if (data.day >=16 && data.month != 12){
       newDateObject ={
         year: data.year,
         day : 1,
         month: parseInt(data.month) + 1
-      }
+      } 
+    } else if (data.day >=16 && data.month == 12){
+      newDateObject ={
+        year: parseInt(data.year) + 1,
+        day : 1,
+        month: 1
+    } 
     } else { 
       newDateObject = {
         year: data.year,
@@ -57,7 +63,7 @@ exports.main = async (event, callback) => {
 
   callback({
     outputFields: {
-      newRenewalDate: convertedToUnix,
+      newRenewalDate: newRenewalDate,
     }
   });
 }
