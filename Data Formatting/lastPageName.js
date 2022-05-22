@@ -1,5 +1,5 @@
 const axios = require("axios");
-const APIKEY = process.env.HAPI_KAY;
+const APIKEY = process.env.HAPIKEY;
 
 exports.main = async (event, callback) => {
 
