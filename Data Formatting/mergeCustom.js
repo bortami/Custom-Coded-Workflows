@@ -8,10 +8,11 @@ exports.main = async (event, callback) => {
   const objectId = event.inputFields["hs_object_id"];
   const email = event.inputFields["contact_email"].trim();
   const courseID = event.inputFields["issa_course_id"].trim();
+  const objectID =process.env.OBJECT;
 
   try {
     
-    const certificateSearchResults = await hubspotClient.crm.objects.searchApi.doSearch("2-7900944", {
+    const certificateSearchResults = await hubspotClient.crm.objects.searchApi.doSearch(OBJECT, {
         filterGroups: [
           {
             filters: [
