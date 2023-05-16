@@ -7,12 +7,12 @@ const hubspotClient = new hubspot.Client({
 exports.main = async (event, callback) => {
   const objectId = event.inputFields["hs_object_id"];
   const email = event.inputFields["contact_email"].trim();
-  const courseID = event.inputFields["issa_course_id"].trim();
+  const courseID = event.inputFields["unique_id"].trim();
 
 
   try {
     
-    const certificateSearchResults = await hubspotClient.crm.objects.searchApi.doSearch("2-7900944", {
+    const certificateSearchResults = await hubspotClient.crm.objects.searchApi.doSearch("objectType", {
         filterGroups: [
           {
             filters: [
@@ -22,7 +22,7 @@ exports.main = async (event, callback) => {
                 value: email,
               },
               {
-                propertyName: "issa_course_id",
+                propertyName: "unique_id",
                 operator: "EQ",
                 value: courseID,
               }
@@ -30,15 +30,17 @@ exports.main = async (event, callback) => {
           },
         ],
         limit: 100,
-      	properties: ["issa_course_id", "contact_email"]
+      	properties: ["unique_id", "contact_email"]
       });
     
     //console.log(certificateSearchResults);
     
     var objectsToMerge = [];
+    //you can only merge a maximum of 250 records into one record
+
     for (let i = 0; i < certificateSearchResults.results.length; i++) {
       const currentObject = certificateSearchResults.results[i];
-      if (currentObject.properties.issa_course_id == courseID && currentObject.properties.contact_email == email && currentObject.id !== objectId) {
+      if (currentObject.properties.unique_id == courseID && currentObject.properties.contact_email == email && currentObject.id !== objectId) {
           objectsToMerge.push({
             id: currentObject.id
           });
@@ -46,11 +48,12 @@ exports.main = async (event, callback) => {
       }
     
     console.log(`there are ${objectsToMerge.length} duplicate objects.`);
+    
     if(objectsToMerge.length > 0 ){
     for (let i = 0; i < objectsToMerge.length; i++){
           // Merge certifications
           const currentMergeObject = objectsToMerge[i];
-          await hubspotClient.crm.objects.publicObjectApi.merge("2-7900944",{
+          await hubspotClient.crm.objects.publicObjectApi.merge("objectType",{
             primaryObjectId: objectId,
             objectIdToMerge: currentMergeObject.id,
           });
@@ -67,5 +70,5 @@ exports.main = async (event, callback) => {
     console.error("Hit API rate limit. Will retry.", err);
     // It will automatically retry when the code fails because of a rate limiting error from the HubSpot API.
     throw err;
-  } 
+  }
 };
