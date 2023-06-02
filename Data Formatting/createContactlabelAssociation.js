@@ -59,11 +59,11 @@ exports.main = async (event, callback) => {
       const contactId = findContact.results[0].id;
       const createAssociation =
         await hubspotClient.crm.objects.associationsApi.create(
-          "certification",
+          "deal",
           objectId,
           "contact",
           contactId,
-          "certification_to_contact"
+          "deal_to_contact"
         );
         // TODO: add association label here.
       //console.log("create Association Results", createAssociation);
