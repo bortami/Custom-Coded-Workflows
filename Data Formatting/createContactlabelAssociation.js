@@ -1,4 +1,5 @@
 const hubspot = require("@hubspot/api-client");
+const axios = require("axios");
 
 const hubspotClient = new hubspot.Client({
   accessToken: process.env.APPKEY,
@@ -6,11 +7,14 @@ const hubspotClient = new hubspot.Client({
 
 exports.main = async (event, callback) => {
   const objectId = event.inputFields["hs_object_id"];
-  const email = event.inputFields[""].trim();
-  const firstname = event.inputFields[""].trim();
-  const lastname = event.inputFields[""].trim();
-  const label = "Referrer";
-
+  const email =
+    event.inputFields["referring_individual_s_email_address"].trim();
+  const firstname = event.inputFields["referring_individual_s_name"].trim();
+  const lastname = event.inputFields["referring_individual_s_last_name"].trim();
+  const headers = {
+    Authorization: "Bearer " + process.env.APPKEY,
+    "Content-Type": "application/json",
+  };
   try {
     //get contact
     const searchObject = {
@@ -32,7 +36,7 @@ exports.main = async (event, callback) => {
     const findContact = await hubspotClient.crm.contacts.searchApi.doSearch(
       searchObject
     );
-    console.log("Search Results:", findContact);
+    // console.log("Search Results:", findContact);
 
     //if no contact, create contact & associate to deal
     if (findContact.total == 0) {
@@ -44,28 +48,47 @@ exports.main = async (event, callback) => {
       const createContact = await hubspotClient.crm.contacts.basicApi.create({
         properties,
       });
-      const createNewAssociation =
-        await hubspotClient.crm.objects.associationsApi.create(
-          "deal",
+      const associateObjects =
+        await hubspotClient.crm.deals.associationsApi.create(
           objectId,
-          "contact",
+          "contacts",
           createContact.id,
-          "deal_to_contact"
+          [
+            {
+              associationCategory: "USER_DEFINED",
+              associationTypeId: 19,
+            },
+          ]
         );
-      // TODO: add association label here.
+      const makeMarketingContact = await axios.post(
+        "https://api.hubapi.com/automation/v2/workflows/43871337/enrollments/contacts/" +
+          createContact.properties.email,
+        undefined,
+        { headers }
+      );
       //     console.log("create Contact Results", createContact);
     } else {
-      // if contact exists, associate certification to contact
+      // if contact exists, associate deal to contact
       const contactId = findContact.results[0].id;
-      const createAssociation =
-        await hubspotClient.crm.objects.associationsApi.create(
-          "deal",
+
+      const associateObjects =
+        await hubspotClient.crm.deals.associationsApi.create(
           objectId,
-          "contact",
+          "contacts",
           contactId,
-          "deal_to_contact"
+          [
+            {
+              associationCategory: "USER_DEFINED",
+              associationTypeId: 19,
+            },
+          ]
         );
-        // TODO: add association label here.
+      const makeMarketingContact = await axios.post(
+        "https://api.hubapi.com/automation/v2/workflows/43871337/enrollments/contacts/" +
+          findContact.results[0].properties.email,
+        undefined,
+        { headers }
+      );
       //console.log("create Association Results", createAssociation);
     }
   } catch (err) {
