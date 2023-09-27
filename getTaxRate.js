@@ -1,5 +1,5 @@
-const HSKEY = process.env.HSKEY;
-const STIQ_KEY = process.env.STIQ_KEY;
+const HSKEY = process.env.HS_ST_KEY;
+const STIQ_KEY = process.env.STIQ_KEY_TEMP;
 const hubspot = require("@hubspot/api-client");
 const axios = require("axios");
 
@@ -13,7 +13,7 @@ exports.main = async (event, callback) => {
   const street = event.inputFields["street"];
   const city = event.inputFields["city"];
   const state = event.inputFields["state"];
-  const zip = event.inputFields["zip"];
+  const zip = event.inputFields["zip"].toString();
 
   let taxLineItemId;
   let taxAmount;
@@ -38,8 +38,8 @@ exports.main = async (event, callback) => {
   const taxRate = taxRateLookup.data.tax_rate;
   //calculate taxes
   taxAmount =
-    Math.round(((totalAmount * (taxRate / 100)) + Number.EPSILON) * 100) / 100;
-  console.log(taxAmount);
+    Math.round((totalAmount * (taxRate / 100) + Number.EPSILON) * 100) / 100;
+
   //get line items
   const dealresponse = await hubspotClient.apiRequest({
     method: "GET",
@@ -67,23 +67,24 @@ exports.main = async (event, callback) => {
       item.properties.name == "Taxes" ||
       item.properties.name == "taxes"
   );
-  console.log(taxLineItem);
+
   //get line item
   taxLineItemId = taxLineItem.id;
-  console.log(taxLineItemId);
+
   //update tax line amount with taxRate
   const updateTaxAmount = await hubspotClient.apiRequest({
     method: "patch",
     path: `/crm/v3/objects/line_items/${taxLineItemId}`,
     body: { properties: { price: `${taxAmount}` } },
   });
-  console.log(updateTaxAmount);
+
   /*****
       Use the callback function to output data that can be used in later actions in your workflow.
     *****/
   callback({
-    // outputFields: {
-    //   email: email,
-    // },
+    outputFields: {
+      taxAmount: taxAmount,
+      taxRate: taxRate,
+    },
   });
 };
