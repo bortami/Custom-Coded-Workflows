@@ -1,5 +1,5 @@
 const HSKEY = process.env.HS_ST_KEY;
-const STIQ_KEY = process.env.STIQ_KEY_TEMP;
+const STIQ_KEY = process.env.STIQ_KEY;
 const hubspot = require("@hubspot/api-client");
 const axios = require("axios");
 
@@ -14,31 +14,11 @@ exports.main = async (event, callback) => {
   const city = event.inputFields["city"];
   const state = event.inputFields["state"];
   const zip = event.inputFields["zip"].toString();
+  let taxRate = event.inputFields["sales_tax"];
 
   let taxLineItemId;
   let taxAmount;
-
-  //get tax rate
-
-  const taxRateLookup = await axios({
-    method: "post",
-    url: "https://api.salestaxiq.com/uq1wxt4wz5jpgn9c/rates",
-    data: {
-      street: `${street}`,
-      city: `${city}`,
-      state: `${state}`,
-      zip: `${zip}`,
-    },
-    headers: {
-      "Content-Type": "application/json",
-      "X-BLOBR-KEY": STIQ_KEY,
-    },
-  }).catch((err) => console.error(err));
-
-  const taxRate = taxRateLookup.data.tax_rate;
-  //calculate taxes
-  taxAmount =
-    Math.round((totalAmount * (taxRate / 100) + Number.EPSILON) * 100) / 100;
+  let sum = 0;
 
   //get line items
   const dealresponse = await hubspotClient.apiRequest({
@@ -71,20 +51,58 @@ exports.main = async (event, callback) => {
   //get line item
   taxLineItemId = taxLineItem.id;
 
-  //update tax line amount with taxRate
-  const updateTaxAmount = await hubspotClient.apiRequest({
-    method: "patch",
-    path: `/crm/v3/objects/line_items/${taxLineItemId}`,
-    body: { properties: { price: `${taxAmount}` } },
+  //add new deal amount
+
+  lineitemDetailsCollection.results.forEach((price) => {
+    if (price.id === taxLineItemId) {
+      //do nothing
+    } else {
+      sum += parseInt(price.properties.price);
+    }
   });
 
+  if (sum === totalAmount) {
+    sum = totalAmount;
+  } else {
+    //get tax rate
+
+    const taxRateLookup = await axios({
+      method: "post",
+      url: "https://api.salestaxiq.com/axkj15gvp8kvhjzm/rates",
+      data: {
+        street: `${street}`,
+        city: `${city}`,
+        state: `${state}`,
+        zip: `${zip}`,
+      },
+      headers: {
+        "Content-Type": "application/json",
+        "X-BLOBR-KEY": STIQ_KEY,
+      },
+    }).catch((err) => console.error(err));
+
+    taxRate = taxRateLookup.data.tax_rate;
+    //calculate taxes
+    taxAmount =
+      Math.round((totalAmount * (taxRate / 100) + Number.EPSILON) * 100) / 100;
+    if (taxLineItem.properties.price === taxAmount) {
+      //do nothing
+    } else {
+      //update tax line amount with taxRate
+      const updateTaxAmount = await hubspotClient.apiRequest({
+        method: "patch",
+        path: `/crm/v3/objects/line_items/${taxLineItemId}`,
+        body: { properties: { price: `${taxAmount}` } },
+      });
+    }
+  }
   /*****
       Use the callback function to output data that can be used in later actions in your workflow.
     *****/
   callback({
     outputFields: {
-      taxAmount: taxAmount,
       taxRate: taxRate,
+      amount: sum,
     },
   });
 };
