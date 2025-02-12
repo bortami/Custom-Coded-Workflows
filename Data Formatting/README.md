@@ -17,4 +17,4 @@ This workflow associates a contact to a custom object. If no contact exists, it 
 This workflow searches for all custom object records that match two unique identidfiers and merges them. There is a 250 record merge limit to beaware of. Sometimes, archiving in batches is better than merging.
 
 # advanceDate
-This workflow advances a date in hubspot by a predetermined amount while skipping weekends.
+This workflow advances a date in hubspot by a predetermined amount while skipping weekends. To copy the date to a HubSpot property, you need to set the output field to be a date data type. Then you can use native steps to copy the new date to anothe property with a workflow action.
